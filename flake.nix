@@ -60,6 +60,7 @@
           flake8
           huggingface-hub 
           rich
+	  pylatexenc
           wedlm
         ];
 
