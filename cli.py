@@ -15,6 +15,11 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
 
+from pylatexenc.latex2text import LatexNodes2Text
+
+
+latex_converter = LatexNodes2Text()
+
 BLUE, YELLOW, RESET = "\033[94m", "\033[93m", "\033[0m"
 
 console = Console()
@@ -78,6 +83,35 @@ def animate_logo(stop_event: threading.Event, total_duration: float = 1.):
     # Once done or stopped, ensure the final, clean logo is printed
     os.system('cls' if os.name == 'nt' else 'clear')
     print(LOGO)
+
+
+def format_math(text: str) -> str:
+    """
+    Improved math formatter that catches various LaTeX delimiters 
+    used by LLMs ( [ ], ( ), $$, \( \), \[ \] ).
+    """
+    def replace_math(match):
+        latex_content = match.group(1).strip()
+        try:
+            converted = latex_converter.convert(latex_content)
+            return f"\n> {converted}\n"
+        except:
+            return match.group(0)
+
+    text = re.sub(r'(?:\\\[|\[)\s*(.*?)\s*(?:\\\]|\])', replace_math, text, flags=re.DOTALL)
+    text = re.sub(r'\$\$\s*(.*?)\s*\$\$', replace_math, text, flags=re.DOTALL)
+
+    def replace_inline(match):
+        content = match.group(1)
+        if "\\" in content or "^" in content or "_" in content or "=" in content:
+            try: return f" {latex_converter.convert(content)} "
+            except: return match.group(0)
+        return match.group(0)
+
+    text = re.sub(r'(?:\\\(|\()(?!\s)(.*?)(?<!\s)(?:\\\)|\))', replace_inline, text)
+    text = re.sub(r'\$(.*?)\$', replace_inline, text)
+    
+    return text
 
 # ==================== Configuration ====================
 GPU_MEMORY_UTILIZATION = 0.95
@@ -299,7 +333,8 @@ def main():
                 for output in llm.generate_stream([formatted_prompt], sampling_params):
                     if 'new_text' in output:
                         full_response += output['new_text']
-                        live.update(Markdown(full_response, code_theme="monokai"), refresh=True)
+                        readable_response = format_math(full_response)
+                        live.update(Markdown(readable_response, code_theme="monokai"), refresh=True)
 
             messages.append({"role": "assistant", "content": full_response})
 
