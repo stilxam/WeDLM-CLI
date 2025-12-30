@@ -1,4 +1,5 @@
 flake.lock
+WeDLM-8B-Instruct/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
